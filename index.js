@@ -29,6 +29,7 @@ async function run() {
 
     const menuCollection = client.db('cafeDB').collection('menu')
     const reviewCollection = client.db('cafeDB').collection('reviews')
+    const cartCollection = client.db('cafeDB').collection('cart')
 
     // menu 
     app.get('/menu',async(req,res)=>{
@@ -42,6 +43,17 @@ async function run() {
         res.send(result)
     })
 
+    // cart 
+    app.post('/carts', async(req,res)=>{
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem)
+      res.send(result)
+    })
+
+    app.get('/carts',async(req,res)=>{
+      const result = await cartCollection.find().toArray();
+      res.send(result);
+    })
 
 
     // Send a ping to confirm a successful connection
