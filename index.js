@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+var jwt = require('jsonwebtoken');
 require('dotenv').config()
 const port = process.env.PORT || 5000;
 
@@ -32,6 +33,32 @@ async function run() {
     const cartCollection = client.db('cafeDB').collection('cart')
     const userCollection = client.db('cafeDB').collection('users')
 
+    // jwt api 
+    app.post('/jwt', async(req,res)=>{
+      const user = req.body;
+      const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECURE,{expiresIn: '1hr'});
+      res.send({token})
+    })
+
+    // middlewares jwt 
+    const verifyToken = (req,res,next)=>{
+      console.log('inside verified token : ',req.headers.authorization);
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'forbidden access'})
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token,process.env.ACCESS_TOKEN_SECURE,(err,decoded)=>{
+        if(err){
+          return res.status(401).send({message: 'forbidden access'})
+        }
+        req.decoded = decoded;
+        next()
+      })
+
+      // next()
+    }
+
+
     // user 
     app.post('/users', async (req, res) => {
       const user = req.body;
@@ -43,9 +70,23 @@ async function run() {
       const result = await userCollection.insertOne(user);
       res.send(result)
     })
-    app.get('/users', async (req, res) => {
+    
+    app.get('/users', verifyToken, async (req, res) =>{
       const result = await userCollection.find().toArray();
       res.send(result)
+    })
+    app.get('/users/admin/:email', verifyToken, async (req, res) =>{
+      const email = req.params.email;
+      if(email !== req.decoded.email){
+        return res.status(403).send({message: 'unauthorized access'})
+      }
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if(user){
+        admin = user?.role === 'admin';
+      }
+      res.send({admin})
     })
     app.delete('/users/:id', async (req, res) => {
       const id = req.params.id;
