@@ -33,6 +33,7 @@ async function run() {
     const reviewCollection = client.db('cafeDB').collection('reviews')
     const cartCollection = client.db('cafeDB').collection('cart')
     const userCollection = client.db('cafeDB').collection('users')
+    const paymentCollection = client.db('cafeDB').collection('payments')
 
     // jwt api 
     app.post('/jwt', async(req,res)=>{
@@ -199,7 +200,7 @@ async function run() {
       res.send(result)
     })
 
-    // payment 
+    // payment intent
     app.post('/create-payment-intent',async(req,res)=>{
       const {price} = req.body;
       const amount = parseInt(price*100);
@@ -212,6 +213,20 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret
       })
+    })
+    app.post('/payments',async(req,res)=>{
+      const payment = req.body
+      const paymentResult = await paymentCollection.insertOne(payment)
+
+      //delete each item from the cart
+      
+      console.log('payment info:',payment);
+      const query = {_id:{
+        $in: payment.cartIds.map(id=> new ObjectId(id))
+      }}
+      const deleteResult = await cartCollection.deleteMany(query)
+      res.send({paymentResult,deleteResult})
+
     })
 
 
